@@ -2,30 +2,40 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 
-# הגדרת ה-WAGON והמאקרו
-WAGON_TICKERS = ["SPY", "QQQ", "IWM", "EEM", "GLD", "SLV", "TLT", "XLK"]
-MACRO_TICKERS = {"S&P500": "^GSPC", "Nasdaq": "^NDX", "VIX": "^VIX", "10Y Yield": "^TNX"}
-
-st.set_page_config(page_title="Wagon System Pro", layout="wide")
 st.title("🏇 Wagon System: Diagnostic Protocol")
 
+# רשימת הטיקרים
+WAGON_TICKERS = ["SPY", "QQQ", "IWM", "EEM", "GLD", "SLV", "TLT", "XLK"]
+MACRO_TICKERS = {"S&P500": "^GSPC", "Nasdaq": "^NDX", "10Y Yield": "^TNX", "VIX": "^VIX"}
+
 if st.button("הרצת פרוטוקול אבחון"):
-    # 1. נתוני התיק
-    data = yf.download(WAGON_TICKERS, period="1d")['Close'].iloc[-1]
-    df = pd.DataFrame({'מחיר נוכחי': data})
-    st.subheader("מצב הסוסים")
-    st.table(df)
-    
-    # 2. נתוני מאקרו - תיקון המשיכה
-    st.subheader("מדדי מאקרו לאבחון")
-    macro_list = list(MACRO_TICKERS.values())
-    macro_data = yf.download(macro_list, period="1d")['Close'].iloc[-1]
-    
-    # יצירת טבלה תקינה
-    macro_df = pd.DataFrame({'ערך': macro_data})
-    st.table(macro_df)
-    
-    # 3. הכנה לניתוח Out-Riders
-    st.subheader("דוח אבחון חריגות")
-    # כאן בעתיד נשווה את תשואת התיק מול המדדים
-    st.write("המערכת ממתינה להגדרת משקולות התיק כדי להתריע על ביצועי חסר.")
+    try:
+        # משיכת נתונים עם תוקף של יום אחד
+        data = yf.download(WAGON_TICKERS, period="1d")
+        
+        # בדיקה אם קיבלנו נתונים בכלל
+        if not data.empty:
+            # אם יש עמודת 'Close', ניקח אותה
+            if 'Close' in data.columns:
+                prices = data['Close'].iloc[-1]
+            else:
+                prices = data.iloc[-1]
+                
+            df = pd.DataFrame({'מחיר נוכחי': prices})
+            st.subheader("מצב הסוסים")
+            st.table(df)
+        else:
+            st.error("לא הצלחתי למשוך נתונים מ-Yahoo Finance. נסה שוב.")
+
+        # משיכת נתוני מאקרו
+        macro_raw = yf.download(list(MACRO_TICKERS.values()), period="1d")
+        if not macro_raw.empty:
+            macro_prices = macro_raw['Close'].iloc[-1] if 'Close' in macro_raw.columns else macro_raw.iloc[-1]
+            macro_df = pd.DataFrame({'ערך': macro_prices}, index=MACRO_TICKERS.keys())
+            st.subheader("מדדי מאקרו")
+            st.table(macro_df)
+            
+    except Exception as e:
+        st.error(f"שגיאה בהרצת הפרוטוקול: {e}")
+else:
+    st.info("לחץ על הכפתור כדי להתחיל את האבחון.")

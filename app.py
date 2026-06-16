@@ -4,38 +4,33 @@ import pandas as pd
 
 st.title("🏇 Wagon System: Diagnostic Protocol")
 
-# רשימת הטיקרים
 WAGON_TICKERS = ["SPY", "QQQ", "IWM", "EEM", "GLD", "SLV", "TLT", "XLK"]
 MACRO_TICKERS = {"S&P500": "^GSPC", "Nasdaq": "^NDX", "10Y Yield": "^TNX", "VIX": "^VIX"}
 
 if st.button("הרצת פרוטוקול אבחון"):
+    # 1. משיכת נתוני סוסים
     try:
-        # משיכת נתונים עם תוקף של יום אחד
+        st.write("מושך נתוני סוסים...")
         data = yf.download(WAGON_TICKERS, period="1d")
         
-        # בדיקה אם קיבלנו נתונים בכלל
-        if not data.empty:
-            # אם יש עמודת 'Close', ניקח אותה
-            if 'Close' in data.columns:
-                prices = data['Close'].iloc[-1]
-            else:
-                prices = data.iloc[-1]
-                
-            df = pd.DataFrame({'מחיר נוכחי': prices})
+        # ניקוי הנתונים - מוודא שאנחנו עובדים עם מחיר סגירה בלבד
+        if 'Close' in data.columns:
+            df = data['Close'].transpose()
+            df.columns = ['מחיר נוכחי']
             st.subheader("מצב הסוסים")
             st.table(df)
         else:
-            st.error("לא הצלחתי למשוך נתונים מ-Yahoo Finance. נסה שוב.")
-
-        # משיכת נתוני מאקרו
+            st.write("נתונים גולמיים:", data) # נראה מה הוא מחזיר אם 'Close' לא קיים
+            
+        # 2. משיכת נתוני מאקרו
+        st.write("מושך נתוני מאקרו...")
         macro_raw = yf.download(list(MACRO_TICKERS.values()), period="1d")
-        if not macro_raw.empty:
-            macro_prices = macro_raw['Close'].iloc[-1] if 'Close' in macro_raw.columns else macro_raw.iloc[-1]
-            macro_df = pd.DataFrame({'ערך': macro_prices}, index=MACRO_TICKERS.keys())
+        if 'Close' in macro_raw.columns:
+            macro_df = macro_raw['Close'].transpose()
+            macro_df.index = MACRO_TICKERS.keys()
+            macro_df.columns = ['ערך']
             st.subheader("מדדי מאקרו")
             st.table(macro_df)
-            
+
     except Exception as e:
         st.error(f"שגיאה בהרצת הפרוטוקול: {e}")
-else:
-    st.info("לחץ על הכפתור כדי להתחיל את האבחון.")
